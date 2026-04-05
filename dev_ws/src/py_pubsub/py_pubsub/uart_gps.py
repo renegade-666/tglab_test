@@ -3,8 +3,6 @@ import serial
 NUM_GPGGA_FIELDS = 15
 
 def dumb_parse(fields):
-    time = fields[1]
-
     lat_deg = int(fields[2][:2])
     lat_min = float(fields[2][2:])
     latitude = lat_deg + (lat_min / 60)
@@ -16,7 +14,7 @@ def dumb_parse(fields):
     longitude_type = fields[5]
 
     num_satellites = int(fields[7])
-    return (time, latitude, latitude_type, longitude, longitude_type, num_satellites)
+    return (latitude, latitude_type, longitude, longitude_type, num_satellites)
 
 ser = None
 
@@ -49,25 +47,32 @@ def loop():
                 if (len(fields) == NUM_GPGGA_FIELDS):
 
                     # Extracting relevant data
-                    time, latitude, latitude_type, longitude, longitude_type, num_satellites = dumb_parse(fields)
+                    latitude, latitude_type, longitude, longitude_type, num_satellites = dumb_parse(fields)
                     if latitude < 0.0 or latitude > 90.0 or latitude_type != "N" and latitude_type != "S":
-                        return "Error: Invalid latitude"
+                        return ((), "Invalid latitude")
                     if longitude < 0.0 or longitude > 180.0 or longitude_type != "E" and longitude_type != "W":
-                        return "Error: Invalid longitude"
+                        return ((), "Invalid longitude")
                     if num_satellites <= 0:
-                        return "Error: Invalid number of satellites"
-
-                    return f"GPS: {latitude:.4f}° {latitude_type}, {longitude:.4f}° {longitude_type} | Супутники: {num_satellites}"
+                        return ((), "Invalid number of satellites")
+                    return ((latitude, latitude_type, longitude, longitude_type, num_satellites), "Ok")
+                    
                 else:
-                    return "Error: Incorrect number of fields in GPS data"
+                    return ((), "Incorrect number of fields in GPS data")
             else:
-                return "Error: Not a NMEA GPGGA data format"
-    
+                return ((), "Not a NMEA GPGGA data format")
+
+            # TODO: Verify that the checksum is correct...
 
 def main():
     init('/dev/ttyUSB0')
     while True:
-        print(loop())
+        gps_data, error = loop()
+        if not gps_data:
+            print("Error: ", error)
+        else:
+            latitude, latitude_type, longitude, longitude_type, num_satellites = gps_data
+            print(f"GPS: {latitude:.4f}° {latitude_type}, {longitude:.4f}° {longitude_type} | Супутники: {num_satellites}")
+            
     shutdown()
 
 if __name__ == "__main__":

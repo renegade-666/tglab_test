@@ -17,7 +17,7 @@ from rclpy.node import Node
 from rclpy.exceptions import ParameterNotDeclaredException
 from rcl_interfaces.msg import ParameterType
 
-from std_msgs.msg import String
+from interface.msg import GpsPosition
 
 import serial
 from py_pubsub.uart_gps import init, shutdown, loop, dumb_parse
@@ -27,16 +27,23 @@ class MinimalPublisher(Node):
     def __init__(self):
         super().__init__('gps_node')
         self.declare_parameter('port', '/dev/ttyUSB0')
-        self.publisher_ = self.create_publisher(String, '/gps_position', 10)
+        self.publisher_ = self.create_publisher(GpsPosition, '/gps_position', 10)
         timer_period = 0.5  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
         init(self.get_parameter('port').get_parameter_value().string_value)
 
     def timer_callback(self):
-        msg = String()
-        msg.data = loop()
-        self.publisher_.publish(msg)
-        self.get_logger().info('Publishing: "%s"' % msg.data)
+        gps_data, error = loop()
+        if not gps_data:
+            self.get_logger().info('Error: "%s"' % error)
+        else:
+            latitude, latitude_type, longitude, longitude_type, num_satellites = gps_data
+            msg = GpsPosition()
+            msg.latitude = -latitude if latitude_type == "S" else latitude;
+            msg.longitude = -longitude if longitude_type == "W" else longitude;
+            msg.satellites = num_satellites
+            self.publisher_.publish(msg)
+            self.get_logger().info('Publishing...')
 
     def __del__(self):
         shutdown()
