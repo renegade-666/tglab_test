@@ -18,10 +18,19 @@ def dumb_parse(fields):
     num_satellites = int(fields[7])
     return (time, latitude, latitude_type, longitude, longitude_type, num_satellites)
 
-# Open the serial port
-with serial.Serial('/dev/ttyUSB0', baudrate=9600, timeout=1) as ser:
-    while True:
-        gpgga_data = ""
+ser = None
+
+def init():
+    global ser
+    ser = serial.Serial('/dev/ttyUSB0', baudrate=9600, timeout=1)
+
+def shutdown():
+    if ser.is_open:
+        ser.close()
+
+def loop():
+    gpgga_data = ""
+    if ser.is_open:
         try:
             # Read a line from the serial port
             gpgga_data = ser.readline().decode('ascii', errors='replace').strip()
@@ -42,17 +51,24 @@ with serial.Serial('/dev/ttyUSB0', baudrate=9600, timeout=1) as ser:
                     # Extracting relevant data
                     time, latitude, latitude_type, longitude, longitude_type, num_satellites = dumb_parse(fields)
                     if latitude < 0.0 or latitude > 90.0 or latitude_type != "N" and latitude_type != "S":
-                        print("Error: Invalid latitude")
-                        continue
+                        return "Error: Invalid latitude"
                     if longitude < 0.0 or longitude > 180.0 or longitude_type != "E" and longitude_type != "W":
-                        print("Error: Invalid longitude")
-                        continue
+                        return "Error: Invalid longitude"
                     if num_satellites <= 0:
-                        print("Error: Invalid number of satellites")
-                        continue
+                        return "Error: Invalid number of satellites"
 
-                    print(f"GPS: {latitude:.4f}° {latitude_type}, {longitude:.4f}° {longitude_type} | Супутники: {num_satellites}")
+                    return f"GPS: {latitude:.4f}° {latitude_type}, {longitude:.4f}° {longitude_type} | Супутники: {num_satellites}"
                 else:
-                    print("Error: Incorrect number of fields in GPS data")
+                    return "Error: Incorrect number of fields in GPS data"
             else:
-                print("Error: Not a NMEA GPGGA data format")
+                return "Error: Not a NMEA GPGGA data format"
+    
+
+def main():
+    init()
+    while True:
+        print(loop())
+    shutdown()
+
+if __name__ == "__main__":
+    main()
