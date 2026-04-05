@@ -20,9 +20,9 @@ def dumb_parse(fields):
 
 ser = None
 
-def init():
+def init(dev_node):
     global ser
-    ser = serial.Serial('/dev/ttyUSB0', baudrate=9600, timeout=1)
+    ser = serial.Serial(dev_node, baudrate=9600, timeout=1)
 
 def shutdown():
     if ser.is_open:
@@ -65,7 +65,7 @@ def loop():
     
 
 def main():
-    init()
+    init('/dev/ttyUSB0')
     while True:
         print(loop())
     shutdown()
