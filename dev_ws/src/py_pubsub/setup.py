@@ -20,7 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-		'talker = py_pubsub.publisher_member_function:main',
+		'gps_node = py_pubsub.publisher_member_function:main',
         ],
     },
 )
